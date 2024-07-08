@@ -15,16 +15,33 @@ jobs:
           python-version: '3.10'
           cache: pip
       - run: pip install -r requirements.txt
-      - run: python main.py -u "${{ secrets.Username }}" -p "${{ secrets.Password }}"
-      - name: Send failure notification
-        if: failure()
+      - name: Execute Script
+        id: exec_script
+        run: |
+          python main.py -u "${{ secrets.Username }}" -p "${{ secrets.Password }}"
+          echo "::set-output name=status::success"
+        continue-on-error: true
+      - name: Send success notification
+        if: steps.exec_script.outputs.status == 'success'
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
           server_port: 465
           username: ${{ secrets.EMAIL_USERNAME }}
           password: ${{ secrets.EMAIL_PASSWORD }}
-          subject: Failed AutoScheduling Job Notification
+          subject: Agendamento Realizado
           to: someone@example.com
-          from: GitHub Actions
-          body: The job failed. Please check the logs.
+          from: ${{ secrets.EMAIL_FROM }}
+          body: Agendamento realizado com sucesso.
+      - name: Send failure notification
+        if: steps.exec_script.outputs.status != 'success'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: Agendamento Não Realizado
+          to: someone@example.com
+          from: ${{ secrets.EMAIL_FROM }}
+          body: Falha ao realizar agendamento. Verifique os logs para mais informações.
