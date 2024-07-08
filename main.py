@@ -21,24 +21,29 @@ def is_weekday(date: datetime, weekday: str) -> bool:
 def resolve_restaurant_id(restaurant: int) -> int:
     return 41 if restaurant == 2 else restaurant
 
-def login(config: dict, username: str, password: str) -> str:
+def login(config, username: str, password: str) -> str:
     logging.info(f"Attempting login for user: {username}")
-    payload = {
-        'deviceId': config['environment']['device-id'],
-        'deviceInfo': config['environment']['device-info'],
-        'messageToken': config['environment']['message-token'],
-        'login': username,
-        'senha': password
-    }
-    response = requests.post(f'{BASE_URL}/generateToken', json=payload)
+    response = requests.post(
+        f'{BASE_URL}/generateToken',
+        json={
+            'appName': config['environment']['app'],
+            'deviceId': config['environment']['device-id'],
+            'deviceInfo': config['environment']['device-info'],
+            'messageToken': config['environment']['message-token'],
+            'login': username,
+            'senha': password
+        }
+    )
+
     data = response.json()
+
     if data['error']:
         logging.error(f"Login error: {data['mensagem']}")
         raise Exception(data['mensagem'])
-    logging.info("Login successful")
+    
     return data['token']
 
-def schedule_meal(token: str, start: datetime, end: datetime, options: dict) -> list:
+def schedule_meal(config, token: str, start: datetime, end: datetime, options: dict) -> list:
     payload = {
         'dataInicio': start.strftime('%Y-%m-%d %H:%M:%S'),
         'dataFim': end.strftime('%Y-%m-%d %H:%M:%S'),
@@ -80,9 +85,10 @@ def main():
     if tomorrow_schedules:
         logging.info(f'Found {len(tomorrow_schedules)} meals to be scheduled.')
         try:
+            logging.info('Logging in...')
             access_token = login(config, args.username, args.password)
             for schedule in tomorrow_schedules:
-                statuses = schedule_meal(access_token, tomorrow, tomorrow, schedule)
+                statuses = schedule_meal(config, access_token, tomorrow, tomorrow, schedule)
                 for status in statuses:
                     date = datetime.strptime(status['dataRefAgendada'], '%Y-%m-%d %H:%M:%S')
                     message = f"{date.strftime('%d/%m/%Y')} - RU {schedule['restaurant']} ({status['tipoRefeicao']}): "
