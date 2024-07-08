@@ -4,8 +4,16 @@ import yaml
 from argparse import ArgumentParser
 from datetime import datetime, timedelta
 import pytz
+import logging
 
 BASE_URL = 'https://portal.ufsm.br/mobile/webservice'
+
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s',
+                    handlers=[
+                        logging.FileHandler("agendamento.log"),
+                        logging.StreamHandler(sys.stdout)
+                    ])
 
 class Config:
     def __init__(self, filepath: str):
@@ -22,13 +30,16 @@ def resolve_restaurant_id(restaurant: int) -> int:
     return 41 if restaurant == 2 else restaurant
 
 def login(config: dict, username: str, password: str) -> str:
+    logging.info(f"Attempting login for user: {username}")
     response = requests.post(
         f'{BASE_URL}/generateToken',
         json={**config['environment'], 'login': username, 'senha': password}
     )
     data = response.json()
     if data['error']:
+        logging.error(f"Login error: {data['mensagem']}")
         raise ValueError(data['mensagem'])
+    logging.info("Login successful")
     return data['token']
 
 def schedule_meal(token: str, start: datetime, end: datetime, options: dict) -> list:
@@ -55,20 +66,20 @@ def find_schedules(config: dict, date: datetime) -> list:
     return [s for s in config['schedules'] if is_weekday(date, s['weekday'])]
 
 def main():
-    parser = ArgumentParser(description='Agenda automaticamente as refeições do RU da UFSM.')
-    parser.add_argument('-u', '--username', required=True, help='Sua matrícula do aplicativo da UFSM.')
-    parser.add_argument('-p', '--password', required=True, help='Sua senha do aplicativo da UFSM.')
+    parser = ArgumentParser(description='Automatically schedule meals at UFSM.')
+    parser.add_argument('-u', '--username', required=True, help='Your UFSM app username.')
+    parser.add_argument('-p', '--password', required=True, help='Your UFSM app password.')
     args = parser.parse_args()
 
-    print('Lendo configuração...')
+    logging.info('Reading configuration...')
     config = Config('settings.yaml')
 
     now = datetime.now(pytz.timezone('Brazil/East'))
-    tomorrow = now + timedelta(1)
+    tomorrow = now + timedelta(days=1)
     tomorrow_schedules = find_schedules(config, tomorrow)
 
     if tomorrow_schedules:
-        print(f'Encontrado {len(tomorrow_schedules)} refeição(s) para serem agendadas.')
+        logging.info(f'Found {len(tomorrow_schedules)} meals to be scheduled.')
         try:
             access_token = login(config, args.username, args.password)
             for schedule in tomorrow_schedules:
@@ -76,12 +87,12 @@ def main():
                 for status in statuses:
                     date = datetime.strptime(status['dataRefAgendada'], '%Y-%m-%d %H:%M:%S')
                     message = f"{date.strftime('%d/%m/%Y')} - RU {schedule['restaurant']} ({status['tipoRefeicao']}): "
-                    print(message + ('Agendado com sucesso.' if status['sucesso'] else f'Erro: {status["impedimento"]}'))
+                    logging.info(message + ('Scheduled successfully.' if status['sucesso'] else f'Error: {status["impedimento"]}'))
         except Exception as e:
-            print(f'Erro ao executar o agendamento: {e}')
+            logging.error(f'Error while scheduling: {e}')
             sys.exit(1)
     else:
-        print('Não há nenhuma refeição para ser agendada amanhã.')
+        logging.info('No meals to be scheduled for tomorrow.')
 
 if __name__ == '__main__':
     main()
