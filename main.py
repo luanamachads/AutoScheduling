@@ -61,7 +61,7 @@ def main():
     args = parser.parse_args()
 
     print('Lendo configuração...')
-    config = Config('config.yaml')
+    config = Config('settings.yaml')
 
     now = datetime.now(pytz.timezone('Brazil/East'))
     tomorrow = now + timedelta(1)
