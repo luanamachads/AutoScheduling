@@ -22,6 +22,7 @@ jobs:
 
       - name: Execute Script
         run: python main.py -u "${{ secrets.Username }}" -p "${{ secrets.Password }}"
+        run: python main.py -u "${{ secrets.Username1 }}" -p "${{ secrets.Password1 }}"
 
       - name: Upload Log File
         uses: actions/upload-artifact@v2
