@@ -1,0 +1,30 @@
+name: AutoScheduling
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 10 * * *'
+
+jobs:
+  ruina:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python main.py -u "${{ secrets.Username }}" -p "${{ secrets.Password }}"
+      - name: Send failure notification
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: Failed AutoScheduling Job Notification
+          to: someone@example.com
+          from: GitHub Actions
+          body: The job failed. Please check the logs.
