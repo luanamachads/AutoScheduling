@@ -9,45 +9,22 @@ jobs:
   AutoScheduling:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
         with:
           python-version: '3.10'
-          cache: pip
-      - run: pip install -r requirements.txt
+
+      - name: Install Dependencies
+        run: pip install -r requirements.txt
+
       - name: Execute Script
-        id: exec_script
-        run: |
-          python main.py -u "${{ secrets.Username }}" -p "${{ secrets.Password }}"
-          echo "status=success" >> $GITHUB_ENV
+        run: python main.py -u "${{ secrets.Username }}" -p "${{ secrets.Password }}"
+
       - name: Upload Log File
         uses: actions/upload-artifact@v2
         with:
           name: logs
           path: agendamento.log
-      - name: Send success notification
-        if: env.status == 'success'
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 587
-          username: ${{ secrets.EMAIL_USERNAME }}
-          password: ${{ secrets.EMAIL_PASSWORD }}
-          subject: Agendamento Realizado
-          to: ${{ secrets.EMAIL_TO }}
-          from: ${{ secrets.EMAIL_USERNAME }}
-          body: Agendamento realizado com sucesso.
-          secure: true
-      - name: Send failure notification
-        if: env.status != 'success'
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          username: ${{ secrets.EMAIL_USERNAME }}
-          password: ${{ secrets.EMAIL_PASSWORD }}
-          subject: Agendamento Não Realizado
-          to: ${{ secrets.EMAIL_TO }}
-          from: ${{ secrets.EMAIL_USERNAME }}
-          body: Falha ao realizar agendamento. Verifique os logs para mais informações.
-          secure: true
